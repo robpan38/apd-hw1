@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 
 using namespace std;
 
@@ -26,6 +27,7 @@ typedef struct thread_arg {
     pthread_mutex_t* mutex;
     pthread_barrier_t* barrier;
     vector<vector<vector<int>>>* buckets;
+    vector<vector<unordered_map<int, int>>>* cache;
 } thread_arg;
 
 input_data* parse_input_file(char *input_filename) {
@@ -133,8 +135,20 @@ void* thread_function(void *arg) {
 
                 input_data current_data = args.data[current_file];
                 for (int j = 0; j < current_data.n; j++) {
-                    if (isPerfectPower(current_data.arr[j], exponent) || current_data.arr[j] == 1) {
-                        (*(args.buckets))[args.id][i].push_back(current_data.arr[j]);
+                    if ((*(args.cache))[args.id][i].find(current_data.arr[j]) != (*(args.cache))[args.id][i].end()) {
+                        if ((*(args.cache))[args.id][i][current_data.arr[j]] == 1) {
+                            (*(args.buckets))[args.id][i].push_back(current_data.arr[j]);
+                        }
+                    } else {
+                        (*(args.cache))[args.id][i][current_data.arr[j]] = isPerfectPower(current_data.arr[j], exponent);
+                        
+                        if (current_data.arr[j] == 1) {
+                            (*(args.cache))[args.id][i][current_data.arr[j]] = 1;
+                        }
+
+                        if ((*(args.cache))[args.id][i][current_data.arr[j]] == 1) {
+                            (*(args.buckets))[args.id][i].push_back(current_data.arr[j]);
+                        }
                     }
                 }
             }
@@ -189,12 +203,11 @@ int main(int argc, char *argv[]) {
     pthread_barrier_init(&barrier, NULL, mapper_count + reduce_count);
 
     vector<vector<vector<int>>> mapper_buckets(mapper_count, vector<vector<int>>(reduce_count, vector<int>()));
+    vector<vector<unordered_map<int, int>>> mapper_cache(mapper_count, vector<unordered_map<int, int>>(reduce_count, unordered_map<int, int>()));
 
     int return_code;
     for (int i = 0; i < mapper_count + reduce_count; i++) {
         if (i < mapper_count) {
-            // thread-uri mapper
-            // HANDLE RETURN CODE
             mapper_args[i].id = i;
             mapper_args[i].isMapper = 1;
             mapper_args[i].files_left = &files_left;
@@ -204,6 +217,7 @@ int main(int argc, char *argv[]) {
             mapper_args[i].mutex = &mutex;
             mapper_args[i].barrier = &barrier;
             mapper_args[i].buckets = &mapper_buckets;
+            mapper_args[i].cache = &mapper_cache;
             pthread_create(&mapper_threads[i], NULL, thread_function, (void *) &mapper_args[i]);
         } else {
             reducer_args[i - mapper_count].id = i - mapper_count;
