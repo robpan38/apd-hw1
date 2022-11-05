@@ -19,16 +19,6 @@ void parse_cmd_args(char *argv[], int *mapper_count, int *reduce_count, char *in
     strcpy(input_filename, argv[3]);
 }
 
-typedef struct node {
-    int val;
-    struct node *next;
-} node;
-
-typedef struct linked_list {
-    node *head;
-    int n;
-} linked_list;
-
 typedef struct thread_arg {
     int id, mapper_count, reduce_count, isMapper;
     int* files_left;
@@ -88,11 +78,28 @@ void free_input_data(input_data *input_data_arr, int input_data_arr_count) {
 }
 
 int isPerfectPower(int number, int exponent) {
-    for (int i = number; i >= 1; i--) {
-        if (number % i == 0) {
-            if (pow(i, exponent) == number) {
-                return 1;
+    unsigned long long left, right;
+    left = 1;
+    right = number;
+
+    while (left <= right) {
+        unsigned long long m = left + (right - left) / 2;
+        unsigned long long maybe_number = m;
+
+        for (int i = 0; i < exponent - 1; i++) {
+            maybe_number *= m;
+
+            if (maybe_number > number) {
+                break;
             }
+        }
+
+        if (maybe_number > number) {
+            right = m - 1;
+        } else if (maybe_number < number) {
+            left = m + 1;
+        } else {
+            return 1;
         }
     }
 
@@ -155,8 +162,6 @@ void* thread_function(void *arg) {
 
         fclose(output_file);
     }
-
-    pthread_barrier_wait(args.barrier);
 
     return NULL;
 }

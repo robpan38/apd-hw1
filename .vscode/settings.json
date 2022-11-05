@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "pthread.h": "c",
-        "vector": "cpp"
+        "vector": "cpp",
+        "cmath": "cpp"
     }
 }
