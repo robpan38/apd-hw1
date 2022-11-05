@@ -1,0 +1,62 @@
+PANDELE ROBERT-ANDREI - TEMA 1 APD
+
+Functii folosite in implementarea temei plus descriere:
+    - parse_cmd_args(char *argv[], int *mapper_count, int *reduce_count, char *filename):
+        - functia parseaza numarul de mapperi, numarul de reduceri, numele fisierului de input
+
+    - parse_input_file(char *filename):
+        - functia returneaza un array de
+        array-uri de elemente (aceste elemente sunt dintr-un singur fisiere)
+        (avand mai multe fisiere => array de array de elemente)
+
+    - get_number_of_files(char *filename):
+        - functia returneaza numarul total de fisiere de input;
+        numar utilizat in impartirea fisierelor atunci cand are loc
+        procesarea la nivel de mapper
+    
+    - free_input_data():
+        - functia elibereaza spatiul alocat pentru citirea fisierelor
+    
+    - isPerfectPower(int number, int exponent):
+        - functia determina daca exista vreun numar care
+        ridicat la puterea exponent este egal cu number
+        folosind cautare binara
+    
+    - threadFunction(void *arg):
+        - descriere argument functie thread
+        thread_arg {
+            int id; - id-ul thread-ului curent
+            int mapper_count; - numar mapperi
+            int reduce_count; - numar reduceri
+            int isMapper; - variabila care spune daca thread-ul curent e mapper sau nu
+            int* files_left; - indica cate fisiere de input mai sunt de procesat
+            input_data* data; - datele de intrare (numerele din fisiere)
+            pthread_mutex_t* mutex; - mutex pt sincronizare
+            pthread_barrier_t* barrier; - bariera pt sincronizare
+            vector<vector<vector<int>>>* buckets; - fiecare mapper va contine reduce_count * liste 
+                                                    unde se vor stoca puterile perfecte asociate fiecarui exponent (reducer)
+            vector<vector<unordered_map<int, int>>>* cache; - fiecare mapper va avea un cache unde va stoca daca pentru un anumit
+                                                              element s-a aflat deja daca este putere perfecta sau nu
+        }
+
+        - descriere implementare paradigma MapReduce
+            - prima parte a algoritmului este dedicata thread-urilor tip mapper (se face filtrare folosind isMapper);
+            cat timp mai exista fisiere de procesat
+                se distribuie SINCRONIZAT cate un fisier de input fiecarui thread mapper conform metodei primul venit primul servit
+
+                pentru fiecare reducer (exponent) in parte
+                    se parcurge lista de elemente asociata fisierului input curent
+                        se verifica daca elementul curent este in cache
+                            daca acesta este in cache => se introduce in bucket-ul mapper-ului daca e putere perfecta
+                            daca nu este in cache => se salveaza in cache daca este putere perfecta sau nu
+
+            se introduce o bariera pentru asteptarea tuturor thread-urilor de tip mapper
+
+            - a doua parte a algoritmului este dedicata thread-urilor tip reducer (se face filtrare folosind !isMapper)
+                se declara un set unde se vor salva elementele unice
+
+                se iau toate listele asociate thread-ului reducer (exponentului lui)
+                din cele procesate de mapperi
+                    la fiecare element se adauga in set
+                
+                se creeaza fisier de iesire in care se scrie numarul de puteri perfecte unice (dimensiunea setului)
